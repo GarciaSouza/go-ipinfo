@@ -3,6 +3,7 @@ package ipinfo
 import (
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -12,7 +13,7 @@ import (
 )
 
 // Result represents the result of the request.
-type IPInfoResult struct {
+type Result struct {
 	IP       string `json:"ip"`
 	Hostname string `json:"hostname"`
 	City     string `json:"city"`
@@ -28,24 +29,31 @@ type IPInfoResult struct {
 var URL = "http://ipinfo.io/"
 
 // MyIP returns information from the requester's IP address.
-func MyIP() IPInfoResult {
+func MyIP() Result {
 	return IPInformation(URL + "json")
 }
 
 // OtherIP returns information from another IP.
-func OtherIP(address string) IPInfoResult {
+func OtherIP(address string) Result {
 	return IPInformation(URL + address + "/json")
 }
 
 // IPInformation returns information from the requester's IP address.
-func IPInformation(url string) IPInfoResult {
-	resp, errRequest := http.Get(url)
-
+func IPInformation(url string) Result {
 	token := os.Getenv("IPINFO_TOKEN")
-	http.Header.Set("Authorization", strings.Join("Bearer", token))
 
-	if errRequest != nil {
-		panic(errRequest)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Fatal("Error reading request. ", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		panic(err)
 	}
 
 	defer resp.Body.Close()
@@ -55,14 +63,14 @@ func IPInformation(url string) IPInfoResult {
 		panic(errBody)
 	}
 
-	var result IPInfoResult
+	var result Result
 	json.Unmarshal(body, &result)
 
 	return result
 }
 
 // ExtractLatLng extracts the latitude and longitude coordinates.
-func ExtractLatLng(ip IPInfoResult) (float64, float64) {
+func ExtractLatLng(ip Result) (float64, float64) {
 	coordinates := strings.Split(ip.Location, ",")
 
 	lat, errLat := strconv.ParseFloat(coordinates[0], 64)
@@ -80,7 +88,7 @@ func ExtractLatLng(ip IPInfoResult) (float64, float64) {
 
 // Distance returns the distance in Km from the large circle between the
 // location of MyIP and OtherIP.
-func Distance(origin IPInfoResult, destiny IPInfoResult) float64 {
+func Distance(origin Result, destiny Result) float64 {
 	latOrig, lngOrig := ExtractLatLng(origin)
 	latDest, lngDest := ExtractLatLng(destiny)
 
