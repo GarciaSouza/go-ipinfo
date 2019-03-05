@@ -8,6 +8,7 @@ between the coordinates points.
 
 ```bash
 $ go get github.com/paulopinda/go-ipinfo
+$ export IPINFO_TOKEN="..."
 ```
 
 ### Example
